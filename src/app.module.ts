@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { MigrateModule } from './migrate/migrate.module';
+import { DebugModule } from './debug/debug.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { MigrateModule } from './migrate/migrate.module';
     AuthModule,
     WebhookModule,
     MigrateModule,
+    DebugModule,
   ],
   controllers: [AppController],
   providers: [AppService],
