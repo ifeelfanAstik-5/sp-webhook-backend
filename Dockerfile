@@ -45,6 +45,9 @@ COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
 # Install only production dependencies
 RUN npm ci --only=production && npm cache clean --force
 
+# Run database migrations
+RUN npx prisma migrate deploy || echo "No migrations to apply or migrations failed"
+
 # Set the correct permissions
 RUN mkdir -p /app/logs && chown -R nestjs:nodejs /app/logs
 

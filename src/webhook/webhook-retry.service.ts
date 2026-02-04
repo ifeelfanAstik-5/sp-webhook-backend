@@ -19,34 +19,42 @@ export class WebhookRetryService {
   async retryFailedWebhooks() {
     this.logger.log('Checking for failed webhooks to retry...');
     
-    const failedEvents = await this.prisma.webhookEvent.findMany({
-      where: {
-        processed: false,
-        processingError: { not: null },
-        retryCount: { lt: this.MAX_RETRY_ATTEMPTS },
-      },
-      include: {
-        subscription: true,
-      },
-    });
+    try {
+      const failedEvents = await this.prisma.webhookEvent.findMany({
+        where: {
+          processed: false,
+          processingError: { not: null },
+          retryCount: { lt: this.MAX_RETRY_ATTEMPTS },
+        },
+        include: {
+          subscription: true,
+        },
+      });
 
-    for (const event of failedEvents) {
-      try {
-        await this.retryWebhookEvent(event);
-        this.logger.log(`Successfully retried webhook event: ${event.id}`);
-      } catch (error) {
-        this.logger.error(`Failed to retry webhook event: ${event.id}`, error);
-        
-        await this.prisma.webhookEvent.update({
-          where: { id: event.id },
-          data: {
-            retryCount: event.retryCount + 1,
-            processingError: event.retryCount + 1 >= this.MAX_RETRY_ATTEMPTS 
-              ? `Max retry attempts reached. Last error: ${error.message}`
-              : error.message,
-          },
-        });
+      for (const event of failedEvents) {
+        try {
+          await this.retryWebhookEvent(event);
+          this.logger.log(`Successfully retried webhook event: ${event.id}`);
+        } catch (error) {
+          this.logger.error(`Failed to retry webhook event: ${event.id}`, error);
+          
+          await this.prisma.webhookEvent.update({
+            where: { id: event.id },
+            data: {
+              retryCount: event.retryCount + 1,
+              processingError: event.retryCount + 1 >= this.MAX_RETRY_ATTEMPTS 
+                ? `Max retry attempts reached. Last error: ${error.message}`
+                : error.message,
+            },
+          });
+        }
       }
+    } catch (error) {
+      if (error.code === 'P2021') {
+        this.logger.warn('Webhook events table does not exist yet. Skipping retry service.');
+        return;
+      }
+      this.logger.error('Error in webhook retry service', error);
     }
   }
 

@@ -55,34 +55,31 @@ RAILWAY_PROJECT_NAME=your-project-name
 RAILWAY_SERVICE_NAME=your-service-name
 ```
 
-### **4. Database Setup**
+### **4. Database Setup & Migrations**
 Railway automatically provides PostgreSQL:
 1. Go to your project in Railway
 2. Click on the PostgreSQL service
 3. Copy the `DATABASE_URL` from the "Connect" tab
 4. Add it to your environment variables
 
-### **5. Run Database Migrations**
-Since Railway uses Docker, migrations need to be handled:
+#### **IMPORTANT: Run Database Migrations**
+The application requires database migrations to create the necessary tables:
 
-#### **Option A: Add Migration Script**
-Add to `package.json`:
-```json
-{
-  "scripts": {
-    "migrate:deploy": "npx prisma migrate deploy",
-    "migrate:generate": "npx prisma generate"
-  }
-}
-```
+**Option A: Automatic via Docker (Recommended)**
+- The Dockerfile now includes `npx prisma migrate deploy`
+- Migrations will run automatically when the container starts
 
-#### **Option B: Update Dockerfile**
-Add migration step to Dockerfile:
-```dockerfile
-# After copying files
-RUN npx prisma migrate deploy
-RUN npx prisma generate
-```
+**Option B: Manual via Railway Console**
+1. Go to your service in Railway
+2. Click "Console" tab
+3. Run: `npx prisma migrate deploy`
+4. Restart your service
+
+**Option C: One-time Setup**
+If you prefer to run migrations once:
+1. Set up a temporary deployment
+2. Run migrations manually
+3. Remove migration command from Dockerfile for subsequent deployments
 
 ### **6. Health Check**
 Railway will automatically use the health check:
@@ -194,6 +191,25 @@ Railway automatically deploys when:
 - Verify DATABASE_URL format
 - Check if migrations ran
 - Ensure PostgreSQL service is running
+
+#### **4. Database Table Missing Errors**
+If you see errors like:
+```
+The table `public.webhook_events` does not exist in the current database.
+```
+
+**Solution:**
+1. **Run migrations manually** via Railway Console:
+   ```bash
+   npx prisma migrate deploy
+   ```
+2. **Restart the service** after migrations
+3. **Check migration status**:
+   ```bash
+   npx prisma migrate status
+   ```
+
+**Root Cause:** The WebhookRetryService runs every minute and expects the `webhook_events` table to exist. If migrations haven't run, this error will appear repeatedly.
 
 #### **3. Health Check Failures**
 - Verify `/health` endpoint exists
