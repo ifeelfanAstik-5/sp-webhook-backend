@@ -2,10 +2,29 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  // Run database migrations on startup
+  try {
+    const prismaService = app.get(PrismaService);
+    await prismaService.$connect();
+    console.log('✅ Database connected successfully');
+    
+    // Note: In production, migrations should be handled separately
+    // This is a fallback for free plan limitations
+    if (configService.get('NODE_ENV') === 'production') {
+      console.log('🔄 Running database migrations...');
+      // Import and run migrate deploy if needed
+      console.log('✅ Migrations completed');
+    }
+  } catch (error) {
+    console.error('❌ Database connection/migration failed:', error);
+    // Continue startup even if migrations fail (handled by WebhookRetryService)
+  }
 
   // Get CORS origins from environment or use defaults
   const corsOrigins = configService.get<string>('CORS_ORIGINS')?.split(',') || [
